@@ -23,7 +23,7 @@ class Threadweaver(commands.Cog):
                 member  : Member      = discord.utils.get(guild.members, id=payload.user_id)
 
                 thread_channel = None
-                thread_name    = "thread-" + str(message.author.name) + "-" + str(message.id)[-4:]
+                thread_name    = ("thread-" + str(message.author.name) + "-" + str(message.id)[-4:]).lower()
 
                 # Add the user to the thread if it already exists
                 for channel in self.bot.get_all_channels():
@@ -66,7 +66,7 @@ class Threadweaver(commands.Cog):
                 member  : Member       = discord.utils.get(guild.members, id=payload.user_id)
 
                 thread_channel = None
-                thread_name    = "thread-" + str(message.author.name) + "-" + str(message.id)[-4:]
+                thread_name    = ("thread-" + str(message.author.name) + "-" + str(message.id)[-4:]).lower()
 
                 # Remove the user from the thread
                 for channel in self.bot.get_all_channels():
