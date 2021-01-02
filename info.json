@@ -1,0 +1,8 @@
+{
+    "author" : ["zalo#5389"],
+    "install_msg" : "Message the user will recieve when they agree to install your repository.",
+    "name" : "Threadweaver",
+    "short" : "A Discord Redbot Cog that adds threading functionality via the :thread: reaction.",
+    "description" : "A Discord Redbot Cog that allows users to react to messages with the :thread: emoji to create temporary channels based around that comment.",
+    "tags" : ["threadweaver", "thread", "threading", "nested", "comments", "temporary", "channel"]
+}
