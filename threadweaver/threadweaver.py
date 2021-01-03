@@ -4,7 +4,7 @@ from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Gu
 from   discord.ext.commands import Cog
 
 class Threadweaver(commands.Cog):
-    """Threadweaver creates temporary channels based on emoji reactions."""
+    """Threadweaver creates temporary channels based on emoji :thread: reactions."""
 
     def __init__(self, bot):
         self.bot                    : Client          = bot
@@ -28,22 +28,22 @@ class Threadweaver(commands.Cog):
 
         # Create the "Threads" Category if it doesn't exist
         if(self.thread_category is None):
-            print("Attempting to create the Thread Category...")
+            print("[THREADWEAVER] Attempting to create the Thread Category...")
             self.thread_category = await guild.create_category("Threads", reason="Setting up Threading for this Server/'Guild'")
             if self.thread_category is None:
-                print("ERROR: Insufficient permissions to create Categories!  Please give me more permissions!")
+                print("[THREADWEAVER] ERROR: Insufficient permissions to create Categories!  Please give me more permissions!")
 
         # Create the "Thread Archive" Channel if it doesn't exist
         for channel in self.bot.get_all_channels():
             if str(channel) == "thread-archive":
                 self.thread_archive_channel : TextChannel = channel
         if(self.thread_archive_channel is None):
-            print("Attempting to create the Thread-Archive Channel...")
+            print("[THREADWEAVER] Attempting to create the Thread-Archive Channel...")
             self.thread_archive_channel : TextChannel = await guild.create_text_channel("Thread Archive", 
                         topic="This channel records conversations from old threads.", category=self.thread_category,
                         reason = "Setting up the server for Threadweaver.")
             if self.thread_archive_channel is None:
-                print("ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
+                print("[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
 
         # Iterate through all the existing threads, checking for the age of the latest message
         for channel in self.bot.get_all_channels():
@@ -89,7 +89,7 @@ class Threadweaver(commands.Cog):
                     thread_channel : TextChannel = await guild.create_text_channel(
                         thread_name, overwrites=overwrites, topic="\n\nDiscussion Thread: \n"+message.content, category=self.thread_category,
                         reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
-                    print(member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
+                    print("[THREADWEAVER] "+member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
 
                     # Create the Original Post in the Thread
                     embed = Embed(title="Discussion Thread", description=message.content, color=0x00ace6)
