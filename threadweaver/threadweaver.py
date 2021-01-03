@@ -2,6 +2,7 @@ from redbot.core import commands
 import discord
 from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Guild, TextChannel, CategoryChannel
 from   discord.ext.commands import Cog
+from datetime import datetime, timedelta
 
 class Threadweaver(commands.Cog):
     """Threadweaver creates temporary channels based on emoji :thread: reactions."""
@@ -10,6 +11,8 @@ class Threadweaver(commands.Cog):
         self.bot                    : Client          = bot
         self.thread_category        : CategoryChannel = None
         self.thread_archive_channel : TextChannel     = None
+
+        # TODO: Add Configuration properties to name Channels/Categories, and pruning time
 
     async def verify_server_structure(self, guild: Guild):
         """
@@ -48,8 +51,12 @@ class Threadweaver(commands.Cog):
         # Iterate through all the existing threads, checking for the age of the latest message
         for channel in self.bot.get_all_channels():
             if str(channel) != "thread-archive" and str(channel).startswith("thread-"):
-                pass
-                # TODO: Implement Thread Deletion - Consolidate messages to thread-archive
+                latest_message : Message = await channel.history(limit=1).flatten()[0]
+                if latest_message.created_at < datetime.now() - timedelta(days=2):
+                    pass
+                    # TODO: Implement old Thread Deletion
+                    #           - Copy all the messages from the thread to the thread-archive
+                    #           - Delete the thread?
 
     @Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent) -> None:

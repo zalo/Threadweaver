@@ -17,6 +17,5 @@ Contact me here via a Github Issue; make sure to assign the issue to me or call 
  - Threads stick around forever; admins have to delete or prune them
 
 # Todo
-  - Create a "Threads" category
   - Archive old Threads to a `Thread Archive` channel when there has been no activity for a day or two
-  - Make thread names prettier...
+  - Allow Category, Thread-Archive, and Thread Names to be Customized
