@@ -26,10 +26,62 @@ class Threadweaver(commands.Cog):
         }
         self.config.register_guild(**guild_defaults)
 
-        # TODO: Add Configuration properties to name Channels/Categories, and pruning time
+    @commands.command(name="threadweaver-settings",
+                      description='Threadweaver Configuration in JSON; update them with [p]update-settings')
+    @commands.guild_only()
+    async def threadweaver_settings(self, ctx):
+        """Merge an input json with threadweaver's current config settings."""
+        # Begin writing a message confirming the changed settings to the user
+        embed=discord.Embed(title="Guild-level Threadweaver Settings", color=0xff4500)
+        embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar_url)
+        embed.set_thumbnail(url=ctx.guild.icon_url)
+        embed.set_footer(text=f'Change a setting with "/threadweaver_update_setting [name] [value]"')
 
-    def make_channel(self, name, guild):
-        return name.replace(" ", self.config.guild(guild).name_separator()).lower()
+        # Parse the message into a JSON
+        current_settings = await self.config.guild(ctx.guild).get_raw()
+        for setting in current_settings:
+            embed.add_field(name=setting, value="`"+str(current_settings[setting])+"`", inline=False)
+
+        await ctx.send(embed=embed)
+
+    def parse_str(self, s):
+        try:
+            return int(s)
+        except ValueError:
+            try:
+                return float(s)
+            except ValueError:
+                return s
+
+    @commands.command(name="threadweaver_update_setting",
+                      description="Update one of Threadweaver's Config Settings; see [p]threadweaver-settings")
+    @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def threadweaver_update_setting(self, ctx, settingName: str, value: str):
+        """Update one of Threadweaver's Config Settings."""
+
+        # Begin writing a message confirming the changed settings to the user
+        embed=discord.Embed(title="Guild-level Threadweaver Setting Updated!", description=f"Changed Setting: ", color=0x00ff00)
+
+        # Try Acquiring the setting, changing it, and adding it to the embed
+        try:
+            oldValue = await self.config.guild(ctx.guild).get_raw(settingName)
+            newValue = self.parse_str(value)
+            await self.config.guild(ctx.guild).set_raw(settingName, value=newValue)
+            embed.add_field(name=settingName, value=str(oldValue) + " --> " + str(newValue))
+        except KeyError:
+            # KeyError is thrown on bad keys
+            embed.add_field(name=settingName, value="This setting doesn't exist in Threadweaver!")
+            return
+
+        embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar_url)
+        embed.set_thumbnail(url=ctx.guild.icon_url)
+        embed.set_footer(text=f'View all settings with "/threadweaver-settings"')
+        await ctx.send(embed=embed) 
+
+    async def make_channel(self, name, guild):
+        sep = await self.config.guild(guild).name_separator()
+        return name.replace(" ", sep).lower()
 
     async def verify_server_structure(self, guild: Guild):
         """
@@ -42,7 +94,7 @@ class Threadweaver(commands.Cog):
         self.thread_archive_channel : TextChannel     = None
 
         # Verify the server is set up with a "Threads" category channel, and a "Thread Archive" Text Channel
-        thread_category_name = self.config.guild(guild).thread_category_name()
+        thread_category_name = await self.config.guild(guild).thread_category_name()
         for categoryChannel in guild.categories:
             if(str(categoryChannel) == thread_category_name):
                 self.thread_category = categoryChannel
@@ -55,13 +107,13 @@ class Threadweaver(commands.Cog):
                 print("[THREADWEAVER] ERROR: Insufficient permissions to create Categories!  Please give me more permissions!")
 
         # Create the "Thread Archive" Channel if it doesn't exist
-        thread_archive_name = self.make_channel(self.config.guild(guild).thread_archive_name(), guild)
+        thread_archive_name = await self.make_channel(await self.config.guild(guild).thread_archive_name(), guild)
         for channel in self.bot.get_all_channels():
             if str(channel) == thread_archive_name:
                 self.thread_archive_channel : TextChannel = channel
         if(self.thread_archive_channel is None):
             print("[THREADWEAVER] Attempting to create the thread_archive Channel...")
-            self.thread_archive_channel : TextChannel = await guild.create_text_channel("Thread Archive", 
+            self.thread_archive_channel : TextChannel = await guild.create_text_channel(thread_archive_name, 
                         topic="This channel records conversations from old threads.", category=self.thread_category,
                         reason = "Setting up the server for Threadweaver.")
             if self.thread_archive_channel is None:
@@ -71,8 +123,8 @@ class Threadweaver(commands.Cog):
         for channel in self.bot.get_all_channels():
             channel : TextChannel = channel
             if str(channel) != thread_archive_name and str(channel).startswith("thread-"):
-                latest_message : Message = await channel.history(limit=1).flatten()[0]
-                if latest_message.created_at < datetime.now() - timedelta(days=self.config.guild(guild).prune_interval_days()):
+                latest_message : list[Message] = await channel.history(limit=1).flatten()
+                if len(latest_message) > 0 and latest_message[0].created_at < datetime.now() - timedelta(days=await self.config.guild(guild).prune_interval_days()):
                     full_history : list[Message] = await channel.history(limit=1000, oldest_first=True).flatten()
                     #pass
                     # TODO: Implement old Thread Deletion
@@ -90,7 +142,7 @@ class Threadweaver(commands.Cog):
             guild   : Guild       = message.guild
 
             # Is the emoji in the reaction a :thread:?
-            if payload.emoji.name == self.config.guild(guild).trigger_emoji():
+            if payload.emoji.name == await self.config.guild(guild).trigger_emoji():
                 # If so, get the metadata about the message's member
                 member  : Member      = discord.utils.get(guild.members, id=payload.user_id)
 
@@ -98,8 +150,8 @@ class Threadweaver(commands.Cog):
                 await self.verify_server_structure(guild)
 
                 thread_channel = None
-                thread_name    = self.make_channel(self.config.guild(guild).thread_prefix() + 
-                                    str(message.author.name) + " " + str(message.id)[-4:], guild)
+                thread_name    = await self.make_channel(await self.config.guild(guild).thread_prefix() + " " + 
+                                        str(message.author.name) + " " + str(message.id)[-4:], guild)
 
                 # Add the user to the thread if it already exists
                 for channel in self.bot.get_all_channels():
@@ -107,11 +159,12 @@ class Threadweaver(commands.Cog):
                         thread_channel : TextChannel = channel
 
                         # Add the user to the thread if threads are hidden
-                        if self.config.guild(guild).hide_threads():
+                        hide_threads = await self.config.guild(guild).hide_threads()
+                        if hide_threads:
                             await thread_channel.set_permissions(member, read_messages=True)
 
                         # Send the Welcome Message if it exists
-                        welcome_message = self.config.guild(guild).welcome_message()
+                        welcome_message = await self.config.guild(guild).welcome_message()
                         if welcome_message and len(welcome_message) > 0:
                             await thread_channel.send(welcome_message.replace("<@USER>", "<@" + str(member.id) +">"))
                 
@@ -119,7 +172,7 @@ class Threadweaver(commands.Cog):
                 if(thread_channel is None):
                     # Set the permissions that let specific users see into this channel
                     overwrites = {
-                        guild.default_role : discord.PermissionOverwrite(read_messages=(not self.config.guild(guild).hide_threads())),
+                        guild.default_role : discord.PermissionOverwrite(read_messages=(not await self.config.guild(guild).hide_threads())),
                         guild.me           : discord.PermissionOverwrite(read_messages=True, manage_permissions=True),
                         member             : discord.PermissionOverwrite(read_messages=True),
                         message.author     : discord.PermissionOverwrite(read_messages=True)
@@ -146,13 +199,13 @@ class Threadweaver(commands.Cog):
             guild   : Guild       = message.guild
 
             # Is the emoji in the reaction a :thread:?
-            if payload.emoji.name == self.config.guild(guild).trigger_emoji():
+            if payload.emoji.name == await self.config.guild(guild).trigger_emoji():
                 # If so, get the metadata about the message's member
-                member  : Member       = discord.utils.get(guild.members, id=payload.user_id)
+                member  : Member  = discord.utils.get(guild.members, id=payload.user_id)
 
                 thread_channel = None
-                thread_name    = self.make_channel(self.config.guild(guild).thread_prefix() + 
-                                    str(message.author.name) + " " + str(message.id)[-4:], guild)
+                thread_name    = await self.make_channel(await self.config.guild(guild).thread_prefix() + " " + 
+                                        str(message.author.name) + " " + str(message.id)[-4:], guild)
 
                 # Remove the user from the thread
                 for channel in self.bot.get_all_channels():
@@ -160,7 +213,7 @@ class Threadweaver(commands.Cog):
                         thread_channel = channel
 
                         # Send the Farewell Message if it exists
-                        farewell_message = self.config.guild(guild).farewell_message()
+                        farewell_message = await self.config.guild(guild).farewell_message()
                         if farewell_message and len(farewell_message) > 0:
                             await thread_channel.send(farewell_message.replace("<@USER>", "<@" + str(member.id) +">"))
                         
