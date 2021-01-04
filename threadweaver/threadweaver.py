@@ -27,7 +27,7 @@ class Threadweaver(commands.Cog):
         self.config.register_guild(**guild_defaults)
 
     @commands.command(name="threadweaver-settings",
-                      description='Threadweaver Configuration in JSON; update them with [p]update-settings')
+                      description='Threadweaver Configuration; update them with [p]threadweaver_update_setting')
     @commands.guild_only()
     async def threadweaver_settings(self, ctx):
         """Merge an input json with threadweaver's current config settings."""

@@ -19,9 +19,3 @@ Settings can be changed via `/threadweaver_update_setting [name] [value]`.
 
 # Contact
 Contact me here via a Github Issue; make sure to assign the issue to me or call out my name.
-
-# Issues
- - Threads stick around forever; admins have to delete or prune them
-
-# Todo
-  - Archive old Threads to a `Thread Archive` channel when there has been no activity for a day or two
