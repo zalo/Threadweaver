@@ -120,16 +120,23 @@ class Threadweaver(commands.Cog):
                 print("[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
 
         # Iterate through all the existing threads, checking for the age of the latest message
+        interval_days = await self.config.guild(guild).prune_interval_days()
+        thread_prefix = await self.make_channel(await self.config.guild(guild).thread_prefix() + 
+                                                await self.config.guild(guild).name_separator(), guild)
         for channel in self.bot.get_all_channels():
             channel : TextChannel = channel
-            if str(channel) != thread_archive_name and str(channel).startswith("thread-"):
+            if str(channel) != thread_archive_name and str(channel).startswith(thread_prefix):
                 latest_message : list[Message] = await channel.history(limit=1).flatten()
-                if len(latest_message) > 0 and latest_message[0].created_at < datetime.now() - timedelta(days=await self.config.guild(guild).prune_interval_days()):
-                    full_history : list[Message] = await channel.history(limit=1000, oldest_first=True).flatten()
-                    #pass
-                    # TODO: Implement old Thread Deletion
-                    #           - Copy all the messages from the thread to the thread-archive
-                    #           - Delete the thread?
+                if len(latest_message) > 0 and latest_message[0].created_at < datetime.now() - timedelta(days=interval_days):
+                    # Read the first 5000 messages of the thread and mirror them to the thread archive...
+                    full_history : list[Message] = await channel.history(limit=5000, oldest_first=True).flatten()
+                    for thread_message in full_history:
+                        embed=discord.Embed(description=thread_message.content, color=0xff4500)
+                        embed.set_author(name=thread_message.author.display_name, icon_url=thread_message.author.avatar_url)
+                        await self.thread_archive_channel.send(embed=embed)
+
+                    # Delete the thread when we're done
+                    channel.delete(reason="Archived Old Thread in Thread Archive; Deleting Thread")
 
     @Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent) -> None:
