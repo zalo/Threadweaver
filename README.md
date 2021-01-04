@@ -8,7 +8,14 @@ Once you have a [Red Discord Bot V3](https://github.com/Cog-Creators/Red-Discord
 [p]cog install Threadweaver threadweaver
 ```
 
-From there, you and your users should be able to use the 🧵 emoji to create threads.
+Make sure your bot has permissions to manage channels and roles/permissions.
+
+# Usage
+
+By default, you and your users should be able to use the 🧵 emoji on any message to create threads.
+
+The list of internal settings can be viewed via `/threadweaver_settings`.
+Settings can be changed via `/threadweaver_update_setting [name] [value]`.
 
 # Contact
 Contact me here via a Github Issue; make sure to assign the issue to me or call out my name.
@@ -18,4 +25,3 @@ Contact me here via a Github Issue; make sure to assign the issue to me or call 
 
 # Todo
   - Archive old Threads to a `Thread Archive` channel when there has been no activity for a day or two
-  - Allow Category, Thread-Archive, and Thread Names to be Customized
