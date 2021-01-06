@@ -13,6 +13,7 @@ class Threadweaver(commands.Cog):
         self.bot                    : Client          = bot
         self.thread_category        : CategoryChannel = None
         self.thread_archive_channel : TextChannel     = None
+        self.thread_priority        : int             = 2147483646
 
         self.config = Config.get_conf(self, identifier=786340) # THREAD in 1337
         guild_defaults = {
@@ -29,7 +30,7 @@ class Threadweaver(commands.Cog):
         self.config.register_guild(**guild_defaults)
 
     @commands.command(name="threadweaver-settings",
-                      description='Threadweaver Configuration; update them with [p]threadweaver_update_setting')
+                      description='[MOD] Threadweaver Configuration; update them with [p]threadweaver_update_setting')
     @commands.guild_only()
     async def threadweaver_settings(self, ctx):
         """Merge an input json with threadweaver's current config settings."""
@@ -56,7 +57,7 @@ class Threadweaver(commands.Cog):
                 return s
 
     @commands.command(name="threadweaver_update_setting",
-                      description="Update one of Threadweaver's Config Settings; see [p]threadweaver-settings")
+                      description="[MOD] Update one of Threadweaver's Config Settings; see [p]threadweaver-settings")
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     async def threadweaver_update_setting(self, ctx, settingName: str, value: str):
@@ -108,7 +109,7 @@ class Threadweaver(commands.Cog):
         await channel.delete(reason="Archived Old Thread; Deleting Thread")
 
     @commands.command(name="archive-thread",
-                      description="This command archives all the thread's messages to thread-archive and deletes the thread.")
+                      description="[OP] This command archives all the thread's messages to thread-archive and deletes the thread.")
     @commands.guild_only()
     async def archive_thread_command(self, ctx : Message):
         await self.verify_server_structure(ctx.guild)
@@ -119,8 +120,20 @@ class Threadweaver(commands.Cog):
             else:
                 await ctx.send("Only the thread owner <@"+str(thread_owner.id)+"> may archive this thread.")
 
+    @commands.command(name="threadweaver-delete-all-threads",
+                      description="[MOD] Deletes all of the threadweaver threads without backing them up")
+    @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def delete_all_threads_command(self, ctx : Message):
+        print("Running command: Delete Threads")
+        for channel in self.bot.get_all_channels():
+            channel : TextChannel = channel
+            if hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("[THREAD]"):
+                print("Deleting "+str(channel)+"...")
+                await channel.delete(reason="Deleting all threads via /threadweaver_delete_all_threads")
+
     @commands.command(name="rename-thread",
-                      description="This command renames the thread; no spaces!")
+                      description="[OP] This command renames the thread; no spaces!")
     @commands.guild_only()
     async def rename_thread_command(self, ctx : Message, new_name : str):
         await self.verify_server_structure(ctx.guild)
@@ -165,7 +178,7 @@ class Threadweaver(commands.Cog):
             print("[THREADWEAVER] Attempting to create the thread_archive Channel...")
             self.thread_archive_channel : TextChannel = await guild.create_text_channel(thread_archive_name, 
                         topic="This channel records conversations from old threads.", category=self.thread_category,
-                        position=10000, reason = "Setting up the server for Threadweaver.")
+                        position=2147483647, reason = "Setting up the server for Threadweaver.")
             if self.thread_archive_channel is None:
                 print("[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
 
@@ -227,8 +240,9 @@ class Threadweaver(commands.Cog):
                     }
                     thread_channel : TextChannel = await guild.create_text_channel(
                         thread_name, overwrites=overwrites, topic="[THREAD] "+ str(message.id)[-4:] + " By <@" + str(message.author.id) +">: \n"+message.content, category=self.thread_category,
-                        position=0, reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
+                        position=self.thread_priority, reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
                     print("[THREADWEAVER] "+member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
+                    self.thread_priority = self.thread_priority - 1 # Decrement the thread priority so new threads are on top 
 
                     # Create the Original Post in the Thread
                     embed = Embed(title="Discussion Thread", description=message.content, color=0x00ace6)
