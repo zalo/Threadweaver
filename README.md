@@ -1,6 +1,8 @@
 # Threadweaver
 A Discord Redbot Cog that allows users to react to messages with the `:thread:` (🧵) emoji to create temporary channels based around that comment.
 
+![Threadweaver Demo](Threadweaver.gif)
+
 # Installation
 Once you have a [Red Discord Bot V3](https://github.com/Cog-Creators/Red-DiscordBot) set up, execute these commands in Discord (where `[p]` is your bot's command character):
 ```
