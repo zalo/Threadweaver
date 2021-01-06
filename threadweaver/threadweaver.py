@@ -16,9 +16,9 @@ class Threadweaver(commands.Cog):
 
         self.config = Config.get_conf(self, identifier=786340) # THREAD in 1337
         guild_defaults = {
-            "thread_category_name": "Threads",
-            "thread_archive_name" : "thread_archive",
-            "thread_prefix"       : "thread ",
+            "thread_category_name": "══════ ❖ THREADS ❖ ══════",
+            "thread_archive_name" : "📓｜thread_archive",
+            "thread_prefix"       : "🧵｜thread",
             "name_separator"      : "_",
             "welcome_message"     : "Welcome <@USER> to the thread!",
             "farewell_message"    : "<@USER> has left the thread!",
