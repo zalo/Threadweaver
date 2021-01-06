@@ -87,7 +87,7 @@ class Threadweaver(commands.Cog):
         
     def get_thread_owner(self, guild : Guild, thread : TextChannel) -> (Member) :
         thread_topic : str = thread.topic
-        if(thread_topic.startswith("Thread by ")):
+        if(thread_topic.startswith("[THREAD]")):
             match  : re.Match = re.search(r"<@[0-9]*?>", thread_topic)
             owner_id = int(match.group()[2:-1])
             member : Member   = discord.utils.get(guild.members, id=owner_id)
@@ -172,7 +172,7 @@ class Threadweaver(commands.Cog):
         interval_days = await self.config.guild(guild).prune_interval_days()
         for channel in self.bot.get_all_channels():
             channel : TextChannel = channel
-            if str(channel) != thread_archive_name and hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("Thread by "):
+            if str(channel) != thread_archive_name and hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("[THREAD]"):
                 latest_message : list[Message] = await channel.history(limit=1).flatten()
                 # If the latest message is older than the time interval, archive the thread
                 if len(latest_message) > 0 and latest_message[0].created_at < datetime.now() - timedelta(days=interval_days):
@@ -202,7 +202,7 @@ class Threadweaver(commands.Cog):
 
                 # Add the user to the thread if it already exists
                 for channel in self.bot.get_all_channels():
-                    if str(channel) == thread_name:
+                    if hasattr(channel, 'topic') and channel.topic is not None and channel.topic[9:13] == str(message.id)[-4:]:
                         thread_channel : TextChannel = channel
 
                         # Add the user to the thread if threads are hidden
@@ -225,7 +225,7 @@ class Threadweaver(commands.Cog):
                         message.author     : discord.PermissionOverwrite(read_messages=True)
                     }
                     thread_channel : TextChannel = await guild.create_text_channel(
-                        thread_name, overwrites=overwrites, topic="Thread by <@" + str(message.author.id) +">: \n"+message.content, category=self.thread_category,
+                        thread_name, overwrites=overwrites, topic="[THREAD] "+ str(message.id)[-4:] + " By <@" + str(message.author.id) +">: \n"+message.content, category=self.thread_category,
                         reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
                     print("[THREADWEAVER] "+member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
 
@@ -256,7 +256,7 @@ class Threadweaver(commands.Cog):
 
                 # Remove the user from the thread
                 for channel in self.bot.get_all_channels():
-                    if str(channel) == thread_name:
+                    if hasattr(channel, 'topic') and channel.topic is not None and channel.topic[9:13] == str(message.id)[-4:]:
                         thread_channel = channel
 
                         # Send the Farewell Message if it exists
