@@ -33,17 +33,17 @@ class Threadweaver(commands.Cog):
         self.config.register_guild(**guild_defaults)
 
     @commands.command(name="threadweaver-settings",
-                      description='[MOD] Threadweaver Configuration; update them with [p]threadweaver_update_setting')
+                      description='Threadweaver Configuration; update them with [p]threadweaver_update_setting')
     @commands.guild_only()
     async def threadweaver_settings(self, ctx):
-        """Merge an input json with threadweaver's current config settings."""
-        # Begin writing a message confirming the changed settings to the user
+        """Print Threadweaver's Current Config Settings to Discord."""
+        # Set up an embed-message template
         embed=discord.Embed(title="Guild-level Threadweaver Settings", color=0xff4500)
         embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar_url)
         embed.set_thumbnail(url=ctx.guild.icon_url)
         embed.set_footer(text=f'Change a setting with "/threadweaver_update_setting [name] [value]"')
 
-        # Parse the message into a JSON
+        # Iterate through the settings and add them as fields to the embed
         current_settings = await self.config.guild(ctx.guild).get_raw()
         for setting in current_settings:
             embed.add_field(name=setting, value="`"+str(current_settings[setting])+"`", inline=False)
@@ -86,10 +86,12 @@ class Threadweaver(commands.Cog):
         await ctx.send(embed=embed) 
 
     async def make_channel_friendly(self, name : str, guild : Guild):
+        '''Removes the spaces and upper-case characters from a name; not exhaustive or robust'''
         sep = await self.config.guild(guild).name_separator()
         return name.replace(" ", sep).lower()
         
     def get_thread_owner(self, guild : Guild, thread : TextChannel) -> (Member) :
+        '''Parses thread topics to get the owning member of a thread; None if not a thread'''
         thread_topic : str = thread.topic
         if(thread_topic.startswith("[THREAD]")):
             match  : re.Match = re.search(r"<@[0-9]*?>", thread_topic)
