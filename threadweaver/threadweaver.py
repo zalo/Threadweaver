@@ -128,11 +128,11 @@ class Threadweaver(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     async def delete_all_threads_command(self, ctx : Message):
-        print("Running command: Delete Threads")
+        print("[THREADWEAVER] Running command: Delete Threads")
         for channel in self.bot.get_all_channels():
             channel : TextChannel = channel
             if hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("[THREAD]"):
-                print("Deleting "+str(channel)+"...")
+                print("[THREADWEAVER] Deleting "+str(channel)+"...")
                 await channel.delete(reason="Deleting all threads via /threadweaver_delete_all_threads")
 
     @commands.command(name="rename-thread",
