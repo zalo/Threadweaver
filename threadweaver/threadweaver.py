@@ -96,7 +96,7 @@ class Threadweaver(commands.Cog):
             return None
 
     async def archive_thread(self, channel : TextChannel):
-        # Read the first 5000 messages of the thread and mirror them to the thread archive...
+        '''Read the first 5000 messages of the thread, mirror them to the thread archive, and delete the channel'''
         full_history : list[Message] = await channel.history(limit=5000, oldest_first=True).flatten()
         for thread_message in full_history:
             embed=discord.Embed(description=thread_message.content, color=0xff4500)
@@ -105,7 +105,7 @@ class Threadweaver(commands.Cog):
             await sleep(0.01)
 
         # Delete the thread when we're done
-        await channel.delete(reason="Archived Old Thread in Thread Archive; Deleting Thread")
+        await channel.delete(reason="Archived Old Thread; Deleting Thread")
 
     @commands.command(name="archive-thread",
                       description="This command archives all the thread's messages to thread-archive and deletes the thread.")
@@ -117,7 +117,20 @@ class Threadweaver(commands.Cog):
             if(ctx.author.id == thread_owner.id):
                 await self.archive_thread(ctx.channel)
             else:
-                await ctx.send("Only the thread owner <@"+thread_owner.id+"> may archive this thread.")
+                await ctx.send("Only the thread owner <@"+str(thread_owner.id)+"> may archive this thread.")
+
+    @commands.command(name="rename-thread",
+                      description="This command renames the thread; no spaces!")
+    @commands.guild_only()
+    async def rename_thread_command(self, ctx : Message, new_name : str):
+        await self.verify_server_structure(ctx.guild)
+        thread_owner : Member = self.get_thread_owner(ctx.guild, ctx.channel)
+        if thread_owner is not None:
+            if(ctx.author.id == thread_owner.id):
+                thread : TextChannel = ctx.channel
+                await thread.edit(name=await self.make_channel_friendly(new_name, ctx.guild))
+            else:
+                await ctx.send("Only the thread owner <@"+str(thread_owner.id)+"> may rename this thread.")
 
     async def verify_server_structure(self, guild: Guild):
         """
@@ -151,17 +164,15 @@ class Threadweaver(commands.Cog):
             print("[THREADWEAVER] Attempting to create the thread_archive Channel...")
             self.thread_archive_channel : TextChannel = await guild.create_text_channel(thread_archive_name, 
                         topic="This channel records conversations from old threads.", category=self.thread_category,
-                        reason = "Setting up the server for Threadweaver.")
+                        position=10000, reason = "Setting up the server for Threadweaver.")
             if self.thread_archive_channel is None:
                 print("[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
 
         # Iterate through all the existing threads, checking for the age of the latest message
         interval_days = await self.config.guild(guild).prune_interval_days()
-        thread_prefix = await self.make_channel_friendly(await self.config.guild(guild).thread_prefix() + 
-                                                await self.config.guild(guild).name_separator(), guild)
         for channel in self.bot.get_all_channels():
             channel : TextChannel = channel
-            if str(channel) != thread_archive_name and str(channel).startswith(thread_prefix):
+            if str(channel) != thread_archive_name and hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("Thread by "):
                 latest_message : list[Message] = await channel.history(limit=1).flatten()
                 # If the latest message is older than the time interval, archive the thread
                 if len(latest_message) > 0 and latest_message[0].created_at < datetime.now() - timedelta(days=interval_days):
@@ -187,7 +198,7 @@ class Threadweaver(commands.Cog):
 
                 thread_channel = None
                 thread_name    = await self.make_channel_friendly(await self.config.guild(guild).thread_prefix() + " " + 
-                                        str(message.author.name) + " " + str(message.id)[-4:], guild)
+                                        str(message.author.name), guild)
 
                 # Add the user to the thread if it already exists
                 for channel in self.bot.get_all_channels():
@@ -221,7 +232,7 @@ class Threadweaver(commands.Cog):
                     # Create the Original Post in the Thread
                     embed = Embed(title="Discussion Thread", description=message.content, color=0x00ace6)
                     embed.set_author(name=message.author.display_name, icon_url=message.author.avatar_url)
-                    embed.add_field (name="Navigation: ", value="[Jump to Original Message]("+message.jump_url+")")
+                    embed.add_field (name="Commands", value=message.author.display_name+" may use `[p]rename-thread [NAME]` and `[p]archive-thread`\n[Jump to Original Message]("+message.jump_url+")")
                     await thread_channel.send(content="<@" + str(message.author.id) +">'s thread opened by <@" + str(member.id) +">", embed = embed)
 
     @Cog.listener()
@@ -241,7 +252,7 @@ class Threadweaver(commands.Cog):
 
                 thread_channel = None
                 thread_name    = await self.make_channel_friendly(await self.config.guild(guild).thread_prefix() + " " + 
-                                        str(message.author.name) + " " + str(message.id)[-4:], guild)
+                                        str(message.author.name), guild)
 
                 # Remove the user from the thread
                 for channel in self.bot.get_all_channels():
