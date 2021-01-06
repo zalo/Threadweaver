@@ -17,5 +17,7 @@ By default, you and your users should be able to use the 🧵 emoji on any messa
 The list of internal settings can be viewed via `/threadweaver_settings`.
 Settings can be changed via `/threadweaver_update_setting [name] [value]`.
 
+Thread Originators can `/rename-thread [NAME]` and `/archive-thread` their own threads.
+
 # Contact
 Contact me here via a Github Issue; make sure to assign the issue to me or call out my name.

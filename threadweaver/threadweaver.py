@@ -128,7 +128,8 @@ class Threadweaver(commands.Cog):
         if thread_owner is not None:
             if(ctx.author.id == thread_owner.id):
                 thread : TextChannel = ctx.channel
-                await thread.edit(name=await self.make_channel_friendly(new_name, ctx.guild))
+                emoji : str = await self.config.guild(ctx.guild).trigger_emoji()
+                await thread.edit(name=emoji + "｜" + await self.make_channel_friendly(new_name, ctx.guild))
             else:
                 await ctx.send("Only the thread owner <@"+str(thread_owner.id)+"> may rename this thread.")
 
@@ -226,7 +227,7 @@ class Threadweaver(commands.Cog):
                     }
                     thread_channel : TextChannel = await guild.create_text_channel(
                         thread_name, overwrites=overwrites, topic="[THREAD] "+ str(message.id)[-4:] + " By <@" + str(message.author.id) +">: \n"+message.content, category=self.thread_category,
-                        reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
+                        position=0, reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
                     print("[THREADWEAVER] "+member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
 
                     # Create the Original Post in the Thread
