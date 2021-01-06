@@ -1,7 +1,7 @@
 from asyncio.tasks import sleep
 from redbot.core import commands, Config
 import discord
-from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Guild, TextChannel, CategoryChannel
+from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Guild, TextChannel, CategoryChannel, Role
 from   discord.ext.commands import Cog
 from datetime import datetime, timedelta
 import re
@@ -10,22 +10,25 @@ class Threadweaver(commands.Cog):
     """Threadweaver creates temporary channels based on emoji :thread: reactions."""
 
     def __init__(self, bot):
-        self.bot                    : Client          = bot
-        self.thread_category        : CategoryChannel = None
-        self.thread_archive_channel : TextChannel     = None
-        self.thread_priority        : int             = 2147483646
+        self.bot                    : Client              = bot
+        self.thread_category        : CategoryChannel     = None
+        self.thread_archive_channel : TextChannel         = None
+        self.thread_priority        : int                 = 2147483646
+        #self.user_rate_limit        : dict[int, datetime] = []
 
         self.config = Config.get_conf(self, identifier=786340) # THREAD in 1337
         guild_defaults = {
-            "thread_category_name": "══════ ❖ THREADS ❖ ══════",
-            "thread_archive_name" : "📓｜thread_archive",
-            "thread_prefix"       : "🧵｜thread",
-            "name_separator"      : "_",
-            "welcome_message"     : "Welcome <@USER> to the thread!",
-            "farewell_message"    : "<@USER> has left the thread!",
-            "hide_threads"        : True,
-            "trigger_emoji"       : "🧵",
-            "prune_interval_days" : 1
+            "thread_category_name" : "══════ ❖ THREADS ❖ ══════",
+            "thread_archive_name"  : "📓｜thread_archive",
+            "thread_prefix"        : "🧵｜thread",
+            "name_separator"       : "_",
+            "welcome_message"      : "Welcome <@USER> to the thread!",
+            "farewell_message"     : "<@USER> has left the thread!",
+            "hide_threads"         : True,
+            "trigger_emoji"        : "🧵",
+            "prune_interval_days"  : 1,
+            "min_role_to_create"   : "IMPERATOR⚔️" # This is inactive if the role doesn't exist
+            #"user_threads_per_hour": 3
         }
         self.config.register_guild(**guild_defaults)
 
@@ -228,9 +231,26 @@ class Threadweaver(commands.Cog):
                         welcome_message = await self.config.guild(guild).welcome_message()
                         if welcome_message and len(welcome_message) > 0:
                             await thread_channel.send(welcome_message.replace("<@USER>", "<@" + str(member.id) +">"))
+
+                        return # End execution here
                 
                 # Otherwise, create the Thread Channel if it doesn't exist
                 if(thread_channel is None):
+                    # First, check if we should be limiting this member
+                    min_role_name = await self.config.guild(guild).min_role_to_create()
+                    guild_roles  : list[Role] = guild .roles
+                    member_roles : list[Role] = member.roles
+                    for role in guild_roles:
+                        if(str(min_role_name) == str(role)):
+                            if member_roles[-1].position < role.position:
+                                return # This user's role is too low
+
+                    #if member.id in self.user_rate_limit:
+                    #    threads_per_hour = await self.config.guild(guild).user_threads_per_hour()
+                    #    if self.user_rate_limit[member.id] > datetime.now() - timedelta(days=threads_per_hour):
+                    #        await member.send(content="You can't create another thread yet; only "+str(threads_per_hour)+" per hour.")
+                    #        return
+
                     # Set the permissions that let specific users see into this channel
                     overwrites = {
                         guild.default_role : discord.PermissionOverwrite(read_messages=(not await self.config.guild(guild).hide_threads())),
