@@ -1,7 +1,7 @@
 from asyncio.tasks import sleep
 from redbot.core import commands, Config
 import discord
-from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Guild, TextChannel, CategoryChannel, Role
+from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Guild, TextChannel, CategoryChannel, Role, AllowedMentions
 from   discord.ext.commands import Cog
 from datetime import datetime, timedelta
 import re
@@ -38,10 +38,11 @@ class Threadweaver(commands.Cog):
     async def threadweaver_settings(self, ctx):
         """Print Threadweaver's Current Config Settings to Discord."""
         # Set up an embed-message template
+        prefixes : list[str] = await self.bot.get_valid_prefixes(ctx.guild)
         embed=discord.Embed(title="Guild-level Threadweaver Settings", color=0xff4500)
         embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar_url)
         embed.set_thumbnail(url=ctx.guild.icon_url)
-        embed.set_footer(text=f'Change a setting with "/threadweaver_update_setting [name] [value]"')
+        embed.set_footer(text=f'Change a setting with "'+str(prefixes[0])+'threadweaver_update_setting [name] [value]"')
 
         # Iterate through the settings and add them as fields to the embed
         current_settings = await self.config.guild(ctx.guild).get_raw()
@@ -80,9 +81,10 @@ class Threadweaver(commands.Cog):
             embed.add_field(name=settingName, value="This setting doesn't exist in Threadweaver!")
             return
 
+        prefixes : list[str] = await self.bot.get_valid_prefixes(ctx.guild)
         embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar_url)
         embed.set_thumbnail(url=ctx.guild.icon_url)
-        embed.set_footer(text=f'View all settings with "/threadweaver-settings"')
+        embed.set_footer(text=f'View all settings with "'+str(prefixes[0])+'threadweaver-settings"')
         await ctx.send(embed=embed) 
 
     async def make_channel_friendly(self, name : str, guild : Guild):
@@ -104,11 +106,26 @@ class Threadweaver(commands.Cog):
     async def archive_thread(self, channel : TextChannel):
         '''Read the first 5000 messages of the thread, mirror them to the thread archive, and delete the channel'''
         full_history : list[Message] = await channel.history(limit=5000, oldest_first=True).flatten()
+        text_buffer  : str           = ""
         for thread_message in full_history:
-            embed=discord.Embed(description=thread_message.content, color=0xff4500)
-            embed.set_author(name=thread_message.author.display_name, icon_url=thread_message.author.avatar_url)
-            await self.thread_archive_channel.send(embed=embed)
-            await sleep(0.01)
+            next_message = "<@"+str(thread_message.author.id)+">: "+thread_message.content + "\n"
+
+            if(len(text_buffer) + len(next_message) > 1999):
+                # Post embed
+                embed=discord.Embed(description=text_buffer, color=0xff4500)
+                #embed.set_author(name=thread_message.author.display_name, icon_url=thread_message.author.avatar_url)
+                await self.thread_archive_channel.send(title=channel.name, embed=embed, 
+                    allowed_mentions=AllowedMentions(everyone=False, users=False, roles=False))
+                text_buffer = ""
+                await sleep(1.01)
+
+            text_buffer += next_message
+
+        # Clean up the remains
+        if(len(text_buffer) > 0):
+            embed=discord.Embed(title=channel.name, description=text_buffer, color=0xff4500)
+            await self.thread_archive_channel.send(embed=embed, 
+                allowed_mentions=AllowedMentions(everyone=False, users=False, roles=False))
 
         # Delete the thread when we're done
         await channel.delete(reason="Archived Old Thread; Deleting Thread")
@@ -135,7 +152,7 @@ class Threadweaver(commands.Cog):
             channel : TextChannel = channel
             if hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("[THREAD]"):
                 print("[THREADWEAVER] Deleting "+str(channel)+"...")
-                await channel.delete(reason="Deleting all threads via /threadweaver_delete_all_threads")
+                await channel.delete(reason="Deleting all threads via the 'threadweaver_delete_all_threads' command")
 
     @commands.command(name="rename-thread",
                       description="[OP] This command renames the thread; no spaces!")
@@ -181,9 +198,13 @@ class Threadweaver(commands.Cog):
                 self.thread_archive_channel : TextChannel = channel
         if(self.thread_archive_channel is None):
             print("[THREADWEAVER] Attempting to create the thread_archive Channel...")
+            overwrites = { 
+                guild.default_role : discord.PermissionOverwrite(send_messages=False),
+                guild.me           : discord.PermissionOverwrite(send_messages=True, manage_permissions=True) 
+            }
             self.thread_archive_channel : TextChannel = await guild.create_text_channel(thread_archive_name, 
                         topic="This channel records conversations from old threads.", category=self.thread_category,
-                        position=2147483647, reason = "Setting up the server for Threadweaver.")
+                        overwrites = overwrites, position=2147483647, reason = "Setting up the server for Threadweaver.")
             if self.thread_archive_channel is None:
                 print("[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
 
@@ -208,7 +229,8 @@ class Threadweaver(commands.Cog):
             guild   : Guild       = message.guild
 
             # Is the emoji in the reaction a :thread:?
-            if payload.emoji.name == await self.config.guild(guild).trigger_emoji():
+            trigger_emoji = await self.config.guild(guild).trigger_emoji()
+            if payload.emoji.name == trigger_emoji:
                 # If so, get the metadata about the message's member
                 member  : Member      = discord.utils.get(guild.members, id=payload.user_id)
 
@@ -245,7 +267,8 @@ class Threadweaver(commands.Cog):
                     for role in guild_roles:
                         if(str(min_role_name) == str(role)):
                             if member_roles[-1].position < role.position:
-                                return # This user's role is too low
+                                await message.remove_reaction(trigger_emoji, member)
+                                return # This user's role is too low to create a thread
 
                     #if member.id in self.user_rate_limit:
                     #    threads_per_hour = await self.config.guild(guild).user_threads_per_hour()
@@ -267,9 +290,10 @@ class Threadweaver(commands.Cog):
                     self.thread_priority = self.thread_priority - 1 # Decrement the thread priority so new threads are on top 
 
                     # Create the Original Post in the Thread
+                    prefixes : list[str] = await self.bot.get_valid_prefixes(guild)
                     embed = Embed(title="Discussion Thread", description=message.content, color=0x00ace6)
                     embed.set_author(name=message.author.display_name, icon_url=message.author.avatar_url)
-                    embed.add_field (name="Commands", value=message.author.display_name+" may use `[p]rename-thread [NAME]` and `[p]archive-thread`\n[Jump to Original Message]("+message.jump_url+")")
+                    embed.add_field (name="Commands", value=message.author.display_name+" may use `"+prefixes[0]+"rename-thread [NAME]` and `"+prefixes[0]+"archive-thread`\n[Jump to Original Message]("+message.jump_url+")")
                     await thread_channel.send(content="<@" + str(message.author.id) +">'s thread opened by <@" + str(member.id) +">", embed = embed)
 
     @Cog.listener()
