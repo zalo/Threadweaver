@@ -1,6 +1,6 @@
 {
     "author" : ["zalo#5389"],
-    "install_msg" : "Congratulations!  Users can now make threads by adding the :thread: emoji to messages!",
+    "install_msg" : "Congratulations!  Users can now make threads by adding the :thread: emoji to messages! Use [p]threadweaver-settings to view configuration.",
     "name" : "Threadweaver",
     "short" : "A Discord Redbot Cog that adds threading functionality via the :thread: reaction.",
     "description" : "A Discord Redbot Cog that allows users to react to messages with the :thread: emoji to create temporary channels based around that comment.",

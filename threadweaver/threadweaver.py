@@ -5,6 +5,8 @@ from   discord import Embed, Member, Message, RawReactionActionEvent, Client, Gu
 from   discord.ext.commands import Cog
 from datetime import datetime, timedelta
 import re
+import logging
+logger = logging.getLogger("red.Threadweaver.threadweaver")
 
 class Threadweaver(commands.Cog):
     """Threadweaver creates temporary channels based on emoji :thread: reactions."""
@@ -52,6 +54,7 @@ class Threadweaver(commands.Cog):
         await ctx.send(embed=embed)
 
     def parse_str(self, s):
+        '''Trivial helper function for parsing a string into an int or float or string'''
         try:
             return int(s)
         except ValueError:
@@ -92,7 +95,7 @@ class Threadweaver(commands.Cog):
         sep = await self.config.guild(guild).name_separator()
         return name.replace(" ", sep).lower()
         
-    def get_thread_owner(self, guild : Guild, thread : TextChannel) -> (Member) :
+    def get_thread_owner(self, guild : Guild, thread : TextChannel) -> Member :
         '''Parses thread topics to get the owning member of a thread; None if not a thread'''
         thread_topic : str = thread.topic
         if(thread_topic.startswith("[THREAD]")):
@@ -110,6 +113,7 @@ class Threadweaver(commands.Cog):
         for thread_message in full_history:
             next_message = "<@"+str(thread_message.author.id)+">: "+thread_message.content + "\n"
 
+            # If the text buffer is above the field limit, cut off a new message
             if(len(text_buffer) + len(next_message) > 1999):
                 # Post embed
                 embed=discord.Embed(description=text_buffer, color=0xff4500)
@@ -147,12 +151,13 @@ class Threadweaver(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
     async def delete_all_threads_command(self, ctx : Message):
-        print("[THREADWEAVER] Running command: Delete Threads")
+        logger.info(msg="[THREADWEAVER] Running command: Delete Threads")
         for channel in self.bot.get_all_channels():
             channel : TextChannel = channel
             if hasattr(channel, 'topic') and channel.topic is not None and channel.topic.startswith("[THREAD]"):
-                print("[THREADWEAVER] Deleting "+str(channel)+"...")
+                logger.info(msg="[THREADWEAVER] Deleting "+str(channel)+"...")
                 await channel.delete(reason="Deleting all threads via the 'threadweaver_delete_all_threads' command")
+                return
 
     @commands.command(name="rename-thread",
                       description="[OP] This command renames the thread; no spaces!")
@@ -186,10 +191,10 @@ class Threadweaver(commands.Cog):
 
         # Create the "Threads" Category if it doesn't exist
         if(self.thread_category is None):
-            print("[THREADWEAVER] Attempting to create the Thread Category...")
+            logger.info(msg="[THREADWEAVER] Attempting to create the Thread Category...")
             self.thread_category = await guild.create_category(thread_category_name, reason="Setting up Threading for this Server/'Guild'")
             if self.thread_category is None:
-                print("[THREADWEAVER] ERROR: Insufficient permissions to create Categories!  Please give me more permissions!")
+                logger.error(msg="[THREADWEAVER] ERROR: Insufficient permissions to create Categories!  Please give me more permissions!")
 
         # Create the "Thread Archive" Channel if it doesn't exist
         thread_archive_name = await self.make_channel_friendly(await self.config.guild(guild).thread_archive_name(), guild)
@@ -197,7 +202,7 @@ class Threadweaver(commands.Cog):
             if str(channel) == thread_archive_name:
                 self.thread_archive_channel : TextChannel = channel
         if(self.thread_archive_channel is None):
-            print("[THREADWEAVER] Attempting to create the thread_archive Channel...")
+            logger.info(msg="[THREADWEAVER] Attempting to create the thread_archive Channel...")
             overwrites = { 
                 guild.default_role : discord.PermissionOverwrite(send_messages=False),
                 guild.me           : discord.PermissionOverwrite(send_messages=True, manage_permissions=True) 
@@ -206,7 +211,7 @@ class Threadweaver(commands.Cog):
                         topic="This channel records conversations from old threads.", category=self.thread_category,
                         overwrites = overwrites, position=2147483647, reason = "Setting up the server for Threadweaver.")
             if self.thread_archive_channel is None:
-                print("[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
+                logger.error(msg="[THREADWEAVER] ERROR: Insufficient permissions to create Channels!  Please give me more permissions!")
 
         # Iterate through all the existing threads, checking for the age of the latest message
         interval_days = await self.config.guild(guild).prune_interval_days()
@@ -286,7 +291,7 @@ class Threadweaver(commands.Cog):
                     thread_channel : TextChannel = await guild.create_text_channel(
                         thread_name, overwrites=overwrites, topic="[THREAD] "+ str(message.id)[-4:] + " By <@" + str(message.author.id) +">: \n"+message.content, category=self.thread_category,
                         position=self.thread_priority, reason = member.display_name + " added a :thread: emoji to " + message.author.display_name + "'s message.")
-                    print("[THREADWEAVER] "+member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
+                    logger.info(msg="[THREADWEAVER] "+member.display_name + " created a new thread: #" + thread_name + " from this message: \n"+message.jump_url)
                     self.thread_priority = self.thread_priority - 1 # Decrement the thread priority so new threads are on top 
 
                     # Create the Original Post in the Thread
