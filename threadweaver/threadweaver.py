@@ -232,6 +232,8 @@ class Threadweaver(commands.Cog):
             channel : TextChannel = discord.utils.get(self.bot.get_all_channels(), id=payload.channel_id)
             message : Message     = await channel.fetch_message(payload.message_id)
             guild   : Guild       = message.guild
+            if guild is None:
+                return
 
             # Is the emoji in the reaction a :thread:?
             trigger_emoji = await self.config.guild(guild).trigger_emoji()
@@ -310,6 +312,8 @@ class Threadweaver(commands.Cog):
             channel : TextChannel = discord.utils.get(self.bot.get_all_channels(), id=payload.channel_id)
             message : Message     = await channel.fetch_message(payload.message_id)
             guild   : Guild       = message.guild
+            if guild is None:
+                return
 
             # Is the emoji in the reaction a :thread:?
             if payload.emoji.name == await self.config.guild(guild).trigger_emoji():
