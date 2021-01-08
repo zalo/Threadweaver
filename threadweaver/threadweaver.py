@@ -221,7 +221,7 @@ class Threadweaver(commands.Cog):
                 latest_message : list[Message] = await channel.history(limit=1).flatten()
                 # If the latest message is older than the time interval, archive the thread
                 if len(latest_message) > 0 and latest_message[0].created_at < datetime.now() - timedelta(days=interval_days):
-                    self.archive_thread(channel)
+                    await self.archive_thread(channel)
 
     @Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent) -> None:
