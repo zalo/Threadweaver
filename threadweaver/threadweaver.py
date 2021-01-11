@@ -54,14 +54,17 @@ class Threadweaver(commands.Cog):
         await ctx.send(embed=embed)
 
     def parse_str(self, s):
-        '''Trivial helper function for parsing a string into an int or float or string'''
+        '''Trivial helper function for parsing a string into a bool, an int, a float or string'''
         try:
-            return int(s)
+            return bool(s)
         except ValueError:
             try:
-                return float(s)
+                return int(s)
             except ValueError:
-                return s
+                try:
+                    return float(s)
+                except ValueError:
+                    return s
 
     @commands.command(name="threadweaver_update_setting",
                       description="[MOD] Update one of Threadweaver's Config Settings; see [p]threadweaver-settings")
