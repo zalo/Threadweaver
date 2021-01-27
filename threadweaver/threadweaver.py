@@ -26,7 +26,7 @@ class Threadweaver(commands.Cog):
             "name_separator"       : "_",
             "welcome_message"      : "Welcome <@USER> to the thread!",
             "farewell_message"     : "<@USER> has left the thread!",
-            "hide_threads"         : True,
+            "hide_threads"         : False,
             "trigger_emoji"        : "🧵",
             "prune_interval_days"  : 1,
             "min_role_to_create"   : "IMPERATOR⚔️" # This is inactive if the role doesn't exist
@@ -35,7 +35,7 @@ class Threadweaver(commands.Cog):
         self.config.register_guild(**guild_defaults)
 
     @commands.command(name="threadweaver-settings",
-                      description='Threadweaver Configuration; update them with [p]threadweaver_update_setting')
+                      description='Threadweaver Configuration; update them with [p]threadweaver-update-setting')
     @commands.guild_only()
     async def threadweaver_settings(self, ctx):
         """Print Threadweaver's Current Config Settings to Discord."""
@@ -55,9 +55,11 @@ class Threadweaver(commands.Cog):
 
     def parse_str(self, s):
         '''Trivial helper function for parsing a string into a bool, an int, a float or string'''
-        try:
-            return bool(s)
-        except ValueError:
+        if s.lower() == "true":
+            return True
+        elif s.lower() == "false":
+            return False
+        else:
             try:
                 return int(s)
             except ValueError:
@@ -66,7 +68,7 @@ class Threadweaver(commands.Cog):
                 except ValueError:
                     return s
 
-    @commands.command(name="threadweaver_update_setting",
+    @commands.command(name="threadweaver-update-setting",
                       description="[MOD] Update one of Threadweaver's Config Settings; see [p]threadweaver-settings")
     @commands.has_permissions(manage_guild=True)
     @commands.guild_only()
@@ -91,7 +93,7 @@ class Threadweaver(commands.Cog):
         embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar_url)
         embed.set_thumbnail(url=ctx.guild.icon_url)
         embed.set_footer(text=f'View all settings with "'+str(prefixes[0])+'threadweaver-settings"')
-        await ctx.send(embed=embed) 
+        await ctx.send(embed=embed)
 
     async def make_channel_friendly(self, name : str, guild : Guild):
         '''Removes the spaces and upper-case characters from a name; not exhaustive or robust'''
